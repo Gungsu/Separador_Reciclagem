@@ -1,9 +1,11 @@
 #include <Arduino.h>
 #include <Ticker.h>
+#include "ESP_FlexyStepper.h"
 //PORTAS
 //Atuadores OUT
 #define Solenoide     32
-#define Driver        33
+#define Driver_Direct 33
+#define Driver_Pulse  14
 #define LedVerde      25
 #define LedAmarelo    26
 #define LedVermelho   27
@@ -19,6 +21,7 @@
 // put function declarations here:
 Ticker tkSec;
 uint32_t timer1 = 0;
+ESP_FlexyStepper stepper;
 
 typedef struct
 {
@@ -119,8 +122,12 @@ void setup() {
   Serial.begin(115200);
   tkSec.attach(0.01, everySecond); // conta +1 no timer a cada 10ms do clock
 
+  stepper.connectToPins(Driver_Pulse,Driver_Direct);
+  stepper.setSpeedInStepsPerSecond(800);
+  stepper.setAccelerationInStepsPerSecondPerSecond(200);
+  stepper.setDecelerationInStepsPerSecondPerSecond(200);
+
   pinMode(Solenoide, OUTPUT);
-  pinMode(Driver, OUTPUT);
   pinMode(LedVerde, OUTPUT);
   pinMode(LedAmarelo, OUTPUT);
   pinMode(LedVermelho, OUTPUT);
@@ -143,6 +150,10 @@ void loop() {
     //ACIONAR PWM PELO TEMPO NECESSARIO PARA CHEGAR NO SEGUNDO BURACO
     controleFarol(1, 0, 0);
     //Acionar PWM
+    stepper.moveRelativeInSteps(1000);
+    delay(2000);
+    stepper.moveRelativeInSteps(-1000);
+    delay(100);
     controleFarol(0, 1, 0);
   }
   if (listaSens.Opt_Pass) {
