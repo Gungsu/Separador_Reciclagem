@@ -3,19 +3,30 @@
 #include "ESP_FlexyStepper.h"
 //PORTAS
 //Atuadores OUT
-#define Solenoide     32
-#define Driver_Direct 33
-#define Driver_Pulse  14
-#define LedVerde      25
-#define LedAmarelo    26
-#define LedVermelho   27
+#define Solenoide     23
+#define Driver_Direct 4
+#define Driver_Pulse  2
+#define Driver_Enable 15
+#define LedVerde      22
+#define LedAmarelo    21
+#define LedVermelho   19
 
 //Sensores IN
-#define Sens_Opt_Alto      19
-#define Sens_Opt_Baixo     18
-#define Sens_Opt_Passagem  5
+#define Sens_Opt_Alto       34
+#define Sens_Opt_Baixo      35
+#define Sens_Opt_Passagem   32
+#define Sens_Opt_Pass2      33
 
-#define ATIVO 1
+//Sesores e posição
+/*
+*  Laranja Difuso Alto       Copo comum
+*  HW-201         Baixo      Lata
+*  Azul Reflex    Passagem   Copinho pequeno
+*  OPtco Par      Pass2      Copo comum
+*/
+
+#define ATIVO_S_Alto 1
+#define ATIVO 0
 #define tempoMinAtivo 10
 
 // put function declarations here:
@@ -135,9 +146,23 @@ void setup() {
   pinMode(Sens_Opt_Alto, INPUT);
   pinMode(Sens_Opt_Baixo, INPUT);
   pinMode(Sens_Opt_Passagem, INPUT);
+  pinMode(Sens_Opt_Pass2, INPUT);
+
+  digitalWrite(Driver_Enable,1);
 }
 
+#define TESTE
+
 void loop() {
+  #ifdef TESTE
+    controleFarol(1,0,0);
+    delay(1000);
+    controleFarol(0,1,0);
+    delay(1000);
+    controleFarol(0,0,1);
+    delay(1000);
+    return;
+  #endif
   verificandoestado();
   if(listaSens.Opt_Alto && listaSens.Opt_Baixo) {
     //Latinha ACIONAR SOLENOIDE
