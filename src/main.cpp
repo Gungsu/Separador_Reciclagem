@@ -6,7 +6,7 @@
 #define Solenoide     23
 #define Driver_Direct 4
 #define Driver_Pulse  2
-#define Driver_Enable 15
+#define Driver_Enable 18
 #define LedVerde      22
 #define LedAmarelo    21
 #define LedVermelho   19
@@ -50,6 +50,11 @@ typedef struct
   uint32_t start_time_Opto_Pass;
   bool Opt_Pass;
   bool timiInit_Opto_Pass;
+
+  uint32_t Opt_Pass_activo2;
+  uint32_t start_time_Opto_Pass2;
+  bool Opt_Pass2;
+  bool timiInit_Opto_Pass2;
 } Sensores;
 
 bool comparaTimer(uint32_t tickStart, uint32_t tempoTotal)
@@ -104,6 +109,8 @@ void verificandoestado() {
   verificandoIndiv(Sens_Opt_Baixo, listaSens.Opt_Baixo_activo, listaSens.Opt_Baixo, listaSens.start_time_Opto_Baixo, listaSens.timiInit_Opto_Baixo);
   // SENSOR OPTO PASSAGEM
   verificandoIndiv(Sens_Opt_Passagem, listaSens.Opt_Pass_activo, listaSens.Opt_Pass, listaSens.start_time_Opto_Pass, listaSens.timiInit_Opto_Pass);
+  // Sensor OPTO Passagem2
+  verificandoIndiv(Sens_Opt_Pass2, listaSens.Opt_Pass_activo2, listaSens.Opt_Pass2, listaSens.start_time_Opto_Pass2, listaSens.timiInit_Opto_Pass2);
 }
 
 void everySecond()
@@ -134,7 +141,7 @@ void setup() {
   tkSec.attach(0.01, everySecond); // conta +1 no timer a cada 10ms do clock
 
   stepper.connectToPins(Driver_Pulse,Driver_Direct);
-  stepper.setSpeedInStepsPerSecond(800);
+  stepper.setSpeedInStepsPerSecond(1200);
   stepper.setAccelerationInStepsPerSecondPerSecond(200);
   stepper.setDecelerationInStepsPerSecondPerSecond(200);
 
@@ -142,27 +149,17 @@ void setup() {
   pinMode(LedVerde, OUTPUT);
   pinMode(LedAmarelo, OUTPUT);
   pinMode(LedVermelho, OUTPUT);
+  pinMode(Driver_Enable, OUTPUT);
 
   pinMode(Sens_Opt_Alto, INPUT);
   pinMode(Sens_Opt_Baixo, INPUT);
   pinMode(Sens_Opt_Passagem, INPUT);
   pinMode(Sens_Opt_Pass2, INPUT);
-
-  digitalWrite(Driver_Enable,1);
 }
 
 #define TESTE
 
 void loop() {
-  #ifdef TESTE
-    controleFarol(1,0,0);
-    delay(1000);
-    controleFarol(0,1,0);
-    delay(1000);
-    controleFarol(0,0,1);
-    delay(1000);
-    return;
-  #endif
   verificandoestado();
   if(listaSens.Opt_Alto && listaSens.Opt_Baixo) {
     //Latinha ACIONAR SOLENOIDE
@@ -175,17 +172,27 @@ void loop() {
     //ACIONAR PWM PELO TEMPO NECESSARIO PARA CHEGAR NO SEGUNDO BURACO
     controleFarol(1, 0, 0);
     //Acionar PWM
+    digitalWrite(Driver_Enable, ATIVO);
+    delay(500);
     stepper.moveRelativeInSteps(1000);
     delay(2000);
     stepper.moveRelativeInSteps(-1000);
     delay(100);
+    digitalWrite(Driver_Enable, !ATIVO);
     controleFarol(0, 1, 0);
   }
   if (listaSens.Opt_Pass) {
     //COPINHO DE CAFÉ PASSOU
-    controleFarol(1, 0, 0);
-    delay(500);
     controleFarol(0, 1, 0, 1);
+    delay(500);
+    controleFarol(1, 0, 0);
+  }
+  if (listaSens.Opt_Pass2)
+  {
+    // COPO GRANDE PASSOU
+    controleFarol(0, 1, 1, 1);
+    delay(500);
+    controleFarol(1, 0, 0);
   }
   if(!(listaSens.Opt_Alto && listaSens.Opt_Baixo && listaSens.Opt_Pass)) {
     //NENHUM SENSOR ATIVO
