@@ -12,11 +12,16 @@
 #define LedVermelho   19
 
 //Sensores IN
-#define Sens_Opt_Alto       35 //35
-#define Sens_Opt_Baixo      34 //34
-#define Sens_Opt_Passagem   33
+#define Sens_Opt_Alto       35 //35  26
+#define INV_O_ALTO          0  //0  1
+#define Sens_Opt_Baixo      34 //34  25
+#define INV_O_BAIXO         1  //1  1
+#define Sens_Opt_Passagem   33 //33
+#define INV_O_PASS          0  //0  1
 #define Sens_Opt_Pass2      32 //Inverte sinal
+#define INV_O_PASS2         1  //1  1
 #define SETINPUT            INPUT
+#define AT_SOLEN            1  //Ativar solenoide com sinal: ___
 //Sesores e posição
 /*
 *  Laranja Difuso Alto       Copo comum
@@ -27,8 +32,7 @@
 
 #define ATIVO_S_Alto 1
 #define ATIVO 0
-#define tempoMinAtivo 4
-#define AT_SOLEN 1
+#define tempoMinAtivo 100
 
 // put function declarations here:
 Ticker tkSec;
@@ -38,7 +42,7 @@ bool waitCopoGrande = false;
 
 typedef struct
 {
-  uint32_t Opt_Alto_activo;
+  uint32_t offtime_Opt_Alto;
   uint32_t start_time_Opto_Alto;
   bool Opt_Alto;
   bool timiInit_Opto_Alto;
@@ -59,7 +63,7 @@ typedef struct
   bool timiInit_Opto_Pass2;
 } Sensores;
 
-bool comparaTimer(uint32_t tickStart, uint32_t tempoTotal)
+bool comparaTimer(uint32_t tickStart, uint32_t tempoTotal, bool x=0)
 {
   uint64_t dif;
   if (tickStart > timer1)
@@ -70,33 +74,51 @@ bool comparaTimer(uint32_t tickStart, uint32_t tempoTotal)
   {
     dif = timer1 - tickStart;
   }
-  if (dif > tempoTotal)
-  {
-    return true;
-  }
-  else
-  {
-    return false;
+  if(!x) {
+    if (dif > tempoTotal)
+    {
+      return true;
+    }
+    else
+    {
+      return false;
+    }
+  } else {
+    if (dif > uint32_t(tempoTotal/2))
+    {
+      return true;
+    }
+    else
+    {
+      return false;
+    }
   }
   return false;
 }
 
-void verificandoIndiv(uint16_t PORTA, uint32_t &contador, bool &estado, uint32_t &startTime, bool &timerInit, bool sign = 1) {
+void verificandoIndiv(uint16_t PORTA, uint32_t &offTime, bool &estado, uint32_t &startTime, bool &timerInit, bool sign = 1)
+{
   if (digitalRead(PORTA) == sign && !timerInit)
   {
     startTime = timer1;
     timerInit = true;
-  } else if (digitalRead(PORTA) != sign) {
-    timerInit = false;
-    estado = false;
+    offTime = 0;
+  } else if (digitalRead(PORTA) != sign && timerInit) {
+    if(offTime == 0) {
+      offTime = timer1;
+    }
+    if(comparaTimer(offTime, tempoMinAtivo,1)){
+      timerInit = false;
+      estado = false;
+      offTime = 0;
+    }
   }
   if (timerInit) {
     if (digitalRead(PORTA) == sign)
     {
+      offTime = 0;
       if (comparaTimer(startTime, tempoMinAtivo)) {
         estado = true;
-      } else {
-        estado = false;
       }
     }
   }
@@ -106,17 +128,17 @@ Sensores listaSens;
 
 void verificandoestado() {
   //SENSOR OPTO NA POSICAO MAIS ALTA
-  //verificandoIndiv(Sens_Opt_Alto,listaSens.Opt_Alto_activo,listaSens.Opt_Alto, listaSens.start_time_Opto_Alto, listaSens.timiInit_Opto_Alto);
   // SENSOR OPTO NA POSICAO MAIS BAIXA
   //verificandoIndiv(Sens_Opt_Baixo, listaSens.Opt_Baixo_activo, listaSens.Opt_Baixo, listaSens.start_time_Opto_Baixo, listaSens.timiInit_Opto_Baixo);
   // SENSOR OPTO PASSAGEM
   //verificandoIndiv(Sens_Opt_Passagem, listaSens.Opt_Pass_activo, listaSens.Opt_Pass, listaSens.start_time_Opto_Pass, listaSens.timiInit_Opto_Pass);
   // Sensor OPTO Passagem2
   //verificandoIndiv(Sens_Opt_Pass2, listaSens.Opt_Pass_activo2, listaSens.Opt_Pass2, listaSens.start_time_Opto_Pass2, listaSens.timiInit_Opto_Pass2,0);
-  listaSens.Opt_Alto = digitalRead(Sens_Opt_Alto);
-  listaSens.Opt_Baixo = !digitalRead(Sens_Opt_Baixo);
-  listaSens.Opt_Pass = digitalRead(Sens_Opt_Passagem);
-  listaSens.Opt_Pass2 = !digitalRead(Sens_Opt_Pass2);
+  verificandoIndiv(Sens_Opt_Alto,listaSens.offtime_Opt_Alto,listaSens.Opt_Alto,listaSens.start_time_Opto_Alto,listaSens.timiInit_Opto_Alto);
+  //listaSens.Opt_Alto = (INV_O_ALTO) ? !digitalRead(Sens_Opt_Alto) : digitalRead(Sens_Opt_Alto);
+  listaSens.Opt_Baixo = (INV_O_BAIXO) ? !digitalRead(Sens_Opt_Baixo) : digitalRead(Sens_Opt_Baixo);
+  listaSens.Opt_Pass = (INV_O_PASS) ? !digitalRead(Sens_Opt_Passagem) : digitalRead(Sens_Opt_Passagem);
+  listaSens.Opt_Pass2 = (INV_O_PASS2) ? !digitalRead(Sens_Opt_Pass2) : digitalRead(Sens_Opt_Pass2);
   // Serial.print(listaSens.Opt_Alto);
   // Serial.print(" ");
   // Serial.print(listaSens.Opt_Baixo);
@@ -124,7 +146,6 @@ void verificandoestado() {
   // Serial.print(listaSens.Opt_Pass);
   // Serial.print(" ");
   // Serial.println(listaSens.Opt_Pass2);
-  delay(500);
 }
 
 void everySecond()
@@ -174,12 +195,11 @@ void setup() {
   pinMode(Sens_Opt_Passagem, SETINPUT);
   pinMode(Sens_Opt_Pass2, SETINPUT);
 
-  digitalWrite(Solenoide, AT_SOLEN);
-
-
+  digitalWrite(Solenoide, !AT_SOLEN);
+  digitalWrite(Driver_Enable, ATIVO);
 }
 
-#define CALIB
+#define DEBUG_S_MOTOR
 
 void loop() {
   #ifdef CALIB
@@ -195,9 +215,9 @@ void loop() {
         Serial.println(0);
       }
       if(listaSens.Opt_Pass) {
-        digitalWrite(Solenoide, !AT_SOLEN);
-        delay(500);
         digitalWrite(Solenoide, AT_SOLEN);
+        delay(500);
+        digitalWrite(Solenoide, !AT_SOLEN);
         delay(100);
       }
     }
@@ -224,21 +244,21 @@ void loop() {
     digitalWrite(Solenoide, AT_SOLEN);
     delay(1000);
     digitalWrite(Solenoide, !AT_SOLEN);
+    listaSens.Opt_Alto = 0;
   }
-  verificandoestado();
   if (listaSens.Opt_Alto && !listaSens.Opt_Baixo) {
     //ACIONAR PWM PELO TEMPO NECESSARIO PARA CHEGAR NO SEGUNDO BURACO
     Serial.println("ACIONAR PWM PELO TEMPO NECESSARIO");
     waitCopoGrande = true;
     controleFarol(1, 0, 0);
     //Acionar PWM
-    digitalWrite(Driver_Enable, ATIVO);
-    delay(500);
-    stepper.moveRelativeInSteps(-10500);
+    #ifndef DEBUG_S_MOTOR
+        stepper.moveRelativeInSteps(-12000);
+    #endif
   }
   if (listaSens.Opt_Pass) {
     //COPINHO DE CAFÉ PASSOU
-    Serial.println("COPINHO DE CAFÉ PASSOU");
+    Serial.println("COPINHO DE CAFE PASSOU");
     controleFarol(0, 1, 0, 1);
     delay(500);
     controleFarol(1, 0, 0);
@@ -252,12 +272,13 @@ void loop() {
     }
     Serial.println("COPO GRANDE PASSOU");
     waitCopoGrande = false;
-    stepper.moveRelativeInSteps(10500);
+    #ifndef DEBUG_S_MOTOR
+      stepper.moveRelativeInSteps(12000);
+    #endif
     controleFarol(0, 1, 1, 1);
     delay(500);
     controleFarol(1, 0, 0);
-    delay(100);
-    digitalWrite(Driver_Enable, !ATIVO);
+    delay(500);
     controleFarol(0, 1, 0);
   }
   if(!(listaSens.Opt_Alto && listaSens.Opt_Baixo && listaSens.Opt_Pass)) {
