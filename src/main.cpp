@@ -114,7 +114,7 @@ void verificandoestado() {
   // Sensor OPTO Passagem2
   //verificandoIndiv(Sens_Opt_Pass2, listaSens.Opt_Pass_activo2, listaSens.Opt_Pass2, listaSens.start_time_Opto_Pass2, listaSens.timiInit_Opto_Pass2,0);
   listaSens.Opt_Alto = digitalRead(Sens_Opt_Alto);
-  listaSens.Opt_Baixo = digitalRead(Sens_Opt_Baixo);
+  listaSens.Opt_Baixo = !digitalRead(Sens_Opt_Baixo);
   listaSens.Opt_Pass = digitalRead(Sens_Opt_Passagem);
   listaSens.Opt_Pass2 = !digitalRead(Sens_Opt_Pass2);
   // Serial.print(listaSens.Opt_Alto);
@@ -159,7 +159,7 @@ void setup() {
   tkSec.attach(0.01, everySecond); // conta +0,01 no timer a cada 10ms do clock
 
   stepper.connectToPins(Driver_Pulse,Driver_Direct);
-  stepper.setSpeedInStepsPerSecond(180);
+  stepper.setSpeedInStepsPerSecond(18000);
   stepper.setAccelerationInStepsPerSecondPerSecond(100);
   stepper.setDecelerationInStepsPerSecondPerSecond(100);
 
@@ -174,12 +174,46 @@ void setup() {
   pinMode(Sens_Opt_Passagem, SETINPUT);
   pinMode(Sens_Opt_Pass2, SETINPUT);
 
-  digitalWrite(Solenoide, !AT_SOLEN);
+  digitalWrite(Solenoide, AT_SOLEN);
+
+
 }
 
-#define TESTE
+#define CALIB
 
 void loop() {
+  #ifdef CALIB
+    digitalWrite(Driver_Enable, ATIVO);
+    while(true) {
+      verificandoestado();
+      if(listaSens.Opt_Alto) {  
+        stepper.moveRelativeInSteps(-12000);
+        Serial.println(1);
+      }
+      if(listaSens.Opt_Baixo) {
+        stepper.moveRelativeInSteps(12000);
+        Serial.println(0);
+      }
+      if(listaSens.Opt_Pass) {
+        digitalWrite(Solenoide, !AT_SOLEN);
+        delay(500);
+        digitalWrite(Solenoide, AT_SOLEN);
+        delay(100);
+      }
+    }
+    return;
+  #endif
+  #ifdef TESTSENS
+    verificandoestado();
+    Serial.print(listaSens.Opt_Alto);
+    Serial.print(" ");
+    Serial.print(listaSens.Opt_Baixo);
+    Serial.print(" ");
+    Serial.print(listaSens.Opt_Pass);
+    Serial.print(" ");
+    Serial.println(listaSens.Opt_Pass2);
+    return;
+  #endif
   verificandoestado();
   if(listaSens.Opt_Alto && listaSens.Opt_Baixo) {
     //Latinha ACIONAR SOLENOIDE
@@ -200,7 +234,7 @@ void loop() {
     //Acionar PWM
     digitalWrite(Driver_Enable, ATIVO);
     delay(500);
-    stepper.moveRelativeInSteps(15000);
+    stepper.moveRelativeInSteps(-10500);
   }
   if (listaSens.Opt_Pass) {
     //COPINHO DE CAFÉ PASSOU
@@ -218,7 +252,7 @@ void loop() {
     }
     Serial.println("COPO GRANDE PASSOU");
     waitCopoGrande = false;
-    stepper.moveRelativeInSteps(-15000);
+    stepper.moveRelativeInSteps(10500);
     controleFarol(0, 1, 1, 1);
     delay(500);
     controleFarol(1, 0, 0);
